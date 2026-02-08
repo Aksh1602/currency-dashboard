@@ -4,23 +4,31 @@ from datetime import datetime, timedelta
 import pandas as pd
 import warnings
 import random
+import logging
+import sys
+from io import StringIO
 
-# Suppress yfinance warnings
+# Suppress yfinance warnings and logging
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', message='.*No price data found.*')
+warnings.filterwarnings('ignore')
+
+# Suppress yfinance logger
+logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+logging.getLogger('yfinance.utils').setLevel(logging.CRITICAL)
 
 # Demo/fallback data for when APIs fail
 FALLBACK_DATA = {
-    "^N225": {"current": 28500.45, "change_percent": 1.23},
-    "^TOPIX": {"current": 2010.80, "change_percent": 0.45},
-    "^BSESN": {"current": 81234.50, "change_percent": 0.87},
-    "^NSEI": {"current": 24567.30, "change_percent": 1.12},
-    "^GSPC": {"current": 5234.80, "change_percent": 0.56},
-    "^DJI": {"current": 42567.23, "change_percent": 0.34},
-    "^IXIC": {"current": 16789.50, "change_percent": 1.02},
-    "^KS11": {"current": 2890.45, "change_percent": 0.78},
-    "000001.SS": {"current": 3456.78, "change_percent": -0.23},
-    "^FTSE": {"current": 8234.56, "change_percent": 0.45},
+    "^N225": {"current": 32456.78, "change_percent": 2.15},
+    "^TOPIX": {"current": 2245.34, "change_percent": 1.87},
+    "^BSESN": {"current": 86543.21, "change_percent": 1.92},
+    "^NSEI": {"current": 26789.50, "change_percent": 2.34},
+    "^GSPC": {"current": 5876.45, "change_percent": 1.56},
+    "^DJI": {"current": 45678.90, "change_percent": 1.23},
+    "^IXIC": {"current": 18234.67, "change_percent": 2.45},
+    "^KS11": {"current": 3125.89, "change_percent": 1.34},
+    "000001.SS": {"current": 3678.45, "change_percent": 0.87},
+    "^FTSE": {"current": 8567.23, "change_percent": 1.02},
 }
 
 def get_stock_indices(symbols: List[str]) -> Dict[str, Any]:
@@ -39,36 +47,44 @@ def get_stock_indices(symbols: List[str]) -> Dict[str, Any]:
         
         for symbol in symbols:
             try:
-                ticker = yf.Ticker(symbol, session=None)
-                # Get current price
-                data = ticker.history(period='1d', timeout=5)
+                # Suppress yfinance stderr output
+                old_stderr = sys.stderr
+                sys.stderr = StringIO()
                 
-                if not data.empty and len(data) > 0:
-                    current_price = data['Close'].iloc[-1]
-                    # Try to get previous close for change calculation
-                    hist = ticker.history(period='5d', timeout=5)
-                    if len(hist) > 1:
-                        prev_close = hist['Close'].iloc[-2]
-                        change = ((current_price - prev_close) / prev_close) * 100
-                    else:
-                        change = 0
+                try:
+                    ticker = yf.Ticker(symbol, session=None)
+                    # Get current price
+                    data = ticker.history(period='1d', timeout=5)
                     
-                    indices_data[symbol] = {
-                        "current": round(float(current_price), 2),
-                        "change_percent": round(change, 2),
-                        "last_update": datetime.now().isoformat(),
-                    }
-                else:
-                    # Use fallback demo data
-                    fallback = FALLBACK_DATA.get(symbol, {"current": 0, "change_percent": 0})
-                    # Add slight variation to demo data
-                    variation = random.uniform(-0.5, 0.5)
-                    indices_data[symbol] = {
-                        "current": fallback["current"],
-                        "change_percent": round(fallback["change_percent"] + variation, 2),
-                        "last_update": datetime.now().isoformat(),
-                        "data_source": "Demo (API unavailable)"
-                    }
+                    if not data.empty and len(data) > 0:
+                        current_price = data['Close'].iloc[-1]
+                        # Try to get previous close for change calculation
+                        hist = ticker.history(period='5d', timeout=5)
+                        if len(hist) > 1:
+                            prev_close = hist['Close'].iloc[-2]
+                            change = ((current_price - prev_close) / prev_close) * 100
+                        else:
+                            change = 0
+                        
+                        indices_data[symbol] = {
+                            "current": round(float(current_price), 2),
+                            "change_percent": round(change, 2),
+                            "last_update": datetime.now().isoformat(),
+                        }
+                    else:
+                        # Use fallback demo data
+                        fallback = FALLBACK_DATA.get(symbol, {"current": 0, "change_percent": 0})
+                        # Add slight variation to demo data
+                        variation = random.uniform(-0.5, 0.5)
+                        indices_data[symbol] = {
+                            "current": fallback["current"],
+                            "change_percent": round(fallback["change_percent"] + variation, 2),
+                            "last_update": datetime.now().isoformat(),
+                            "data_source": "Demo (API unavailable)"
+                        }
+                finally:
+                    sys.stderr = old_stderr
+                    
             except Exception as e:
                 # Use fallback demo data on error
                 fallback = FALLBACK_DATA.get(symbol, {"current": 0, "change_percent": 0})

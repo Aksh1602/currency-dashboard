@@ -81,7 +81,7 @@ def create_llm_agent():
         Agent executor
     """
     llm = ChatGoogleGenerativeAI(
-        model="gemini-pro",
+        model="gemini-2.5-pro",
         google_api_key=GOOGLE_API_KEY,
         temperature=0.3
     )
@@ -112,7 +112,7 @@ def query_agent(agent: Any, query: str) -> str:
         Agent response
     """
     try:
-        response = agent.run(query)
-        return response
+        response = agent.invoke({"input": query})
+        return response.get("output", str(response))
     except Exception as e:
         return f"Error: {str(e)}"
