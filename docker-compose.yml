@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  streamlit:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      CURRENCY_API_KEY: ${CURRENCY_API_KEY}
+    volumes:
+      - .:/app
+    networks:
+      - currency-network
+
+networks:
+  currency-network:
+    driver: bridge
